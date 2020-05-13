@@ -1,0 +1,615 @@
+<style>
+.reveal h1, .reveal h2, .reveal h3 {
+  word-wrap: normal;
+  -webkit-hyphens: none;
+  -moz-hyphens: none;
+  hyphens: none;
+}
+
+.section .reveal .state-background{
+background-color: #00cc99;
+background-size: cover;
+}
+
+</style>
+
+Spatial Analysis in R
+========================================================
+author: Hannah Owens
+date: 18 May, 2020
+font-family: 'Futura'
+
+The Plan
+========================================================
+incremental: true
+
+- Intro to GIS in R
+- Importing/Exporting spatial data
+- Projections, extents, and units
+- Spatial data manipulation
+- Intro to spatial analysis
+
+Intro to GIS (in R)
+========================================================
+type: section
+
+What do you mean, GIS?
+========================================================
+"a framework for gathering, managing, and analyzing spatial data"
+
+GIS in R
+========================================================
+![GIS applications](SpatialAnalysisImages/Screenshot 2019-05-21 20.53.18.png)
+
+Data Types
+========================================================
+![Data types](SpatialAnalysisImages/Screenshot 2019-05-22 13.08.45.png)
+
+Vector Data
+========================================================
+- Spreadsheets with a geometry columns
+- Vertices and paths
+
+Vector Data: Points
+========================================================
+- X - Y coordinates in a spatial reference frame
+  - Generally latitude and longitude
+  - Careful! X = longitude, Y = latitude!
+- e.g. locality
+
+![Vector points](SpatialAnalysisImages/points-vector.png)
+
+Vector Data: Lines
+========================================================
+- Links bewteen X - Y coordinates
+- Represent one-dimensional features
+- e.g. rivers, streets, movement paths
+
+![Vector points](SpatialAnalysisImages/line-vector.png)
+
+Vector Data: Polygons
+========================================================
+- Connect X - Y coordinates and close the path
+- Represent two-dimensional features
+- e.g. conservation areas, country boundaries, distribution limits
+
+![Vector points](SpatialAnalysisImages/polygon-vector.png)
+
+Vector Data: File types
+========================================================
+- Points can be text files (e.g. csv files) **OR** shapefiles
+  - X - Y table with additional features
+- Lines and polygons must be shapefiles
+
+Vector Data: Shapefiles
+========================================================
+
+- Shapefiles actually require 4 main files: 
+  - **shp** - geometry of features
+  - **dbf** - a dBase file with the attribute data for each feature
+    - Can be opened as a spreadsheet
+    - Stores data associated with each feature
+  - **prj** - projection file (more on projections in a bit)
+  - **shx** - helps a GIS program find the features in the .shp file quickly
+
+**IMPORTANT:** each shapefile can only store one type of geometry - point/ polygon/ line
+
+Raster Data
+========================================================
+
+- Made up of pixels
+  - Each pixel has a value
+  - Can be continuous or discrete
+- Many different file types
+  - GeoTIFF
+  - Ascii
+
+Comparing Vectors and Rasters
+========================================================
+```{r vector and raster comparison, echo = F}
+pacman::p_load(flextable,officer)
+my_table<- data.frame(Data_type = c(rep("Vector",3),rep("Raster",3)),Pros = c("High geographical accuracy",
+"Follows topology rules which increases integrity",
+"Used for measurements of proximity","Very good for representing remote sensing data","Performs well with map algebra",""),Cons = c("Doesn’t work well with continuous data","Processing intensive due to topology checks","","Less aesthetically pleasing","Lacks attribute data flexibility
+","Data size increases with increase in resolution"))
+
+myft <- flextable(
+  head(my_table), 
+  col_keys = c("Data_type", "Pros", "Cons"))
+
+myft<- bold(merge_v(theme_vanilla(myft),j="Data_type"),j = "Data_type")
+align(width(fontsize(x = myft,size = 20,part = "all"),width = 4),align = 'left',part = 'all')
+```
+
+Importing/Exporting Spatial Data
+========================================================
+type: section
+
+Reading Vectors
+========================================================
+The `rgdal` library contains a lot of really useful GIS tools. Make friends with it.
+```{r rgdal, message = F}
+library(rgdal)
+pkmng_countries <- readOGR(dsn = "Data/",
+                           layer = "pkmng_polygons")
+```
+
+Reading Vectors
+========================================================
+```{r rgdal 2, message = F}
+head(pkmng_countries[,5:8])
+```
+
+Reading Vectors: Tidyverse
+========================================================
+There is a `tidyverse` alternative
+  - View spatial objects
+  - Edit the associated data
+
+```{r spdplyr}
+library(spdplyr)
+pkmng_countries
+```
+
+Reading Vectors: Tidyverse
+========================================================
+Use `tidyverse` functions to manipulate spatial data:
+
+```{r spdplyr 2}
+#filter out all countries without any Pokemon sightings, and let's rename the column while we're at it:
+pkmng_countries %>%
+  filter(pkmn_rc > 0) %>%
+  rename(Country = NAME)
+```
+
+Reading Vectors: Point data
+========================================================
+
+```{r points, message = F}
+pkmng_points_dat <- read.csv("Data/pkmng_points.csv")
+pkmng_points_dat
+```
+
+
+Reading Vectors: Point data
+========================================================
+Now we use another common GIS package,`sp`, to convert this table into a point shapefile. 
+
+```{r points 2}
+library(sp)
+xy <- tibble(longitude = pkmng_points_dat$longitude,
+             latitude = pkmng_points_dat$latitude)
+pkmng_points <- SpatialPointsDataFrame(coords = xy,
+                                      data = pkmng_points_dat)
+```
+
+Reading Vectors: Point data
+========================================================
+
+```{r points 3}
+pkmng_points
+```
+
+Reading Rasters
+========================================================
+Finally, importing rasters is easily done with the `raster` package.
+```{r raster, message = F, warnings = F}
+library(raster)
+pkmng_raster <- raster("Data/pkmng_raster.tif")
+```
+
+Reading Rasters
+========================================================
+Parts of a raster object
+
+```{r raster 2, message = F, warnings = F}
+pkmng_raster
+```
+
+Basic visualization
+========================================================
+Just use the `plot()` function!
+
+```{r basic plot polygon, fig.height=15, fig.width=30}
+plot(pkmng_countries, col = "yellow")
+```
+
+Basic visualization
+========================================================
+Just use the `plot()` function!
+
+```{r basic plot points, fig.height=15, fig.width=30}
+plot(pkmng_points)
+```
+
+Basic visualization
+========================================================
+You can stack map layers, too.
+
+```{r basic plot polygon and points, fig.height=15, fig.width=30}
+plot(pkmng_countries, col = "yellow")
+points(pkmng_points, pch = 20, cex = .7, col = "red")
+```
+
+Basic visualization
+========================================================
+Rasters also use the `plot()` function!
+
+```{r plot raster 1, fig.height = 15, fig.width = 30}
+plot(pkmng_raster)
+```
+
+Basic visualization
+========================================================
+You can stack multiple plots that mix rasters and vectors using `add` argument.
+
+```{r plot raster 2, fig.height = 15, fig.width = 30}
+plot(pkmng_raster, col = viridis::viridis(n = 10))
+plot(pkmng_countries, add = T)
+```
+
+Challenge 1: Load and display spatial data
+========================================================
+type: prompt
+
+Now it's your turn! Load the shapefile, point csv, and raster and plot them all together. 
+Data can be found in the "Data" folder in the SpatialAnalysis project on GitHub.
+
+```{r Challenge 1 Map, echo = F, fig.height = 15, fig.width = 30}
+plot(pkmng_raster, col = viridis::magma(10), ylim = c(-60,90))
+plot(pkmng_countries, add = T)
+points(pkmng_points, cex = 2)
+```
+
+Solution 1: Load and display spatial data
+========================================================
+type: prompt
+
+Now it's your turn! Load the shapefile, point csv, and raster and plot them all together. 
+Data can be found in the "Data" folder in the SpatialAnalysis project on GitHub.
+
+```{r Challenge 2 Map, echo = F, fig.height = 15, fig.width = 30}
+plot(pkmng_raster, col = viridis::magma(10), ylim = c(-60,90))
+plot(pkmng_countries, add = T)
+points(pkmng_points, cex = 2)
+```
+
+Projections, Extents, and Units
+========================================================
+type: section
+
+Projections
+========================================================
+One of the most important things to remember when dealing with spatial data!!
+
+A projection is a mathematical transformation of coordinates from the surface of a sphere on a 2D plane.
+
+***
+![Demo of projection](SpatialAnalysisImages/projection.gif)
+
+Types of projections
+========================================================
+
+By surface:
+* Cylindrical
+* Conic
+* Azimuthal
+
+****
+By preservation of a metric property
+* Conformal (preserves shape, distorts area)
+* Equal-area (preserves area, distorts shape)
+* Equidistant (preserves distance from some point or line)
+
+
+Checking projection of your spatial objects
+========================================================
+
+You can view the Coordinate Reference System of your spatial objects:
+```{r projections, message=FALSE}
+crs(pkmng_countries)
+crs(pkmng_raster)
+```
+
+Checking projection of spatial objects
+========================================================
+
+But our points shapefile has no projection, because we didn't set it when creating the object.
+```{r projections 2, message=FALSE}
+crs(pkmng_points)
+```
+
+Setting projection of spatial objects
+========================================================
+Two options for defining projections:
+- Writing a string of desired projection
+- Extract projection from existing object
+```{r projections 3, message=F}
+proj1 <- crs("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+proj2 <- crs(pkmng_countries)
+proj2
+```
+
+Setting projection of spatial objects
+========================================================
+Once you've defined the projection, add it to your object
+```{r projections 4, message=F}
+proj4string(pkmng_points) <- proj1
+pkmng_points
+```
+
+Transform projection of spatial objects
+========================================================
+When you want to change the projection of a spatial object
+```{r projections 5, message=F}
+pkmng_points_p <- spTransform(pkmng_points,
+                              crs("+proj=laea  +lat_0=0 +lon_0=0"))
+pkmng_points_p
+```
+
+Why are projections so important?
+========================================================
+Here's our points mapped on top of a shapefile of countries:
+```{r map, message=F, fig.height = 15, fig.width = 30}
+plot(pkmng_countries, axes = T)
+plot(pkmng_points, add = T, pch = 1, col = "red")
+```
+
+Why are projections so important?
+========================================================
+Projections don't match:
+```{r map 2, messages=F, fig.height = 5}
+countries_p <- spTransform(pkmng_countries,
+                              crs("+proj=laea  +lat_0=0 +lon_0=0"))
+plot(countries_p, axes = T)
+plot(pkmng_points, add = T, pch = 1, col = "red")
+```
+
+***
+Projections do match:
+```{r map 3, message=F, fig.height = 5}
+plot(countries_p, axes = T)
+plot(pkmng_points_p, add = T, pch = 1, col = "red")
+```
+
+Extent: Vectors
+========================================================
+- Minimum and maximum X and Y coordinates of the object
+- Depends on projections for units
+
+``` {r extent, message=F}
+pkmng_countries@bbox
+countries_p@bbox
+```
+
+Extent: Rasters
+========================================================
+For raster objects, you find the extent with this syntax:
+```{r extent 2, message=F}
+pkmng_raster@extent
+```
+
+Changing raster extents
+========================================================
+- Reduce extent using `crop()`
+- Increase extent using `extend()`
+``` {r extent 3, message=F}
+pkmng_raster_c <- crop(pkmng_raster,
+                      extent(-50, 100, 0, 80))
+```
+
+Changing raster extents
+========================================================
+All the red cells are in the new, limited extent!
+```{r extent 4, message=F, fig.height = 15, fig.width = 30}
+plot(pkmng_raster)
+plot(pkmng_raster_c, add = T, col = "red")
+```
+
+Why is extent important?
+========================================================
+Mismatching extents and projections result in errors
+```{r extent 5}
+raster::intersect(countries_p, pkmng_raster_c)
+```
+
+Challenge 2: Load and display spatial data
+========================================================
+type: prompt
+
+Now it's your turn! Try cropping the `pkmng_raster` to the Northern Hemisphere and then projecting it using "+proj=laea +lat_0=45 +lon_0=0". Bonus if you reproject and plot the country spatial file on top of it.
+
+```{r Challenge 2 Proj, echo = F, fig.height = 7}
+pkmnh_rast_crop <- crop(pkmng_raster, extent(c(-180, 180, 0, 90)))
+pkmng_raster_crop_rprj <- projectRaster(pkmnh_rast_crop,  crs = "+proj=laea +lat_0=45 +lon_0=0")
+plot(pkmng_raster_crop_rprj)
+plot(spTransform(pkmng_countries, CRSobj = "+proj=laea +lat_0=45 +lon_0=0"), add = T)
+```
+
+Solution 2: Load and display spatial data
+========================================================
+type: prompt
+
+```{r Challenge 2 Proj Solution, fig.height = 7, eval = F}
+pkmnh_rast_crop <- crop(pkmng_raster, extent(c(-180, 180, 0, 90)))
+pkmng_raster_crop_rprj <- projectRaster(pkmnh_rast_crop,  
+                                        crs = "+proj=laea +lat_0=45 +lon_0=0")
+plot(pkmng_raster_crop_rprj)
+plot(spTransform(pkmng_countries, 
+                 CRSobj = "+proj=laea +lat_0=45 +lon_0=0"), add = T)
+```
+
+Some Basic Spatial Manipulation and Analysis
+========================================================
+type: section
+
+Geoprocessing
+========================================================
+- GIS operations used to manipulate spatial data
+- Input dataset -> operation -> output dataset
+
+Geoprocessing: Buffer points
+========================================================
+- creates a polygon based on proximity
+
+**Example:** buffer some pokemon points to 100km radius
+
+We'll first subset the data
+
+```{r subset pokemon}
+sub_pkmng_p<- subset(pkmng_points, pokemonId %in% c(8:10))
+plot(pkmng_countries)
+plot(sub_pkmng_p,add = T, col = "red")
+```
+
+Geoprocessing: Buffer points
+========================================================
+Now we buffer with 100km radius
+```{r buffer pokemon, fig.height = 15, fig.width = 30}
+buffer_pkmng_points<- raster::buffer(sub_pkmng_p,width = 100000)
+plot(pkmng_countries)
+plot(buffer_pkmng_points,add = T, col = "red")
+```
+
+Geoprocessing: Clip
+========================================================
+- Overlay function that cuts out an input layer with extent of a defined feature boundary
+- Result of this tool is a new clipped output layer. 
+
+**Example:** clip buffered points to ones in Italy, and to fit boundaries of Italian coastline.
+
+Geoprocessing: Clip
+========================================================
+First, filter Italy out of the countries shapefile
+```{r pull out Italy, fig.height = 15, fig.width = 30}
+Italy <- pkmng_countries %>% filter(NAME == "Italy")
+plot(Italy)
+plot(buffer_pkmng_points, add = T, col = "red")
+```
+
+Geoprocessing: Clip
+========================================================
+Now clip buffered points based on Italian shapefile we created
+```{r clip to Italy}
+clip_pkmng_rgeos<- rgeos::gIntersection(Italy, buffer_pkmng_points, 
+                                        byid = TRUE, drop_lower_td = TRUE)
+plot(Italy)
+plot(clip_pkmng_rgeos, add = T, col = "red")
+```
+
+Geoprocessing: Intersect
+========================================================
+- similar to clip tool because the extent of input features defines the output
+- BUT it preserves attributes from all data sets that overlap each other in the output 
+
+Lets intersect the points with the country shapefile to find which points belong to which country
+```{r intersect}
+intersect_pkmg<- raster::intersect(pkmng_points,pkmng_countries) 
+```
+
+Geoprocessing: Intersect
+========================================================
+```{r intersect results}
+head(pkmng_countries@data)[,5:7]
+head(intersect_pkmg@data)[,c(1:3,212:214)]
+```
+
+Geoprocessing: Merge
+========================================================
+- Combines datasets that are the same data type
+```{r merge, fig.height = 15, fig.width = 30}
+#subset the countries
+sub_count<- pkmng_countries %>% filter(NAME==c("France","Italy"))
+sub_count_sf<- sf::st_as_sf(sub_count)
+merge_count<- sf::st_combine(sub_count_sf)
+plot(merge_count)
+```
+
+Geoprocessing: Dissolve
+========================================================
+- Unifies boundaries based on common attribute values
+```{r dissolve}
+diss_sub_count<- rgeos::gUnaryUnion(sub_count)
+plot(diss_sub_count)
+```
+
+Zonal statistics
+========================================================
+Allows you to calculate statistics from raster data for each feature a vector dataset
+
+**Example:** Calculate mean temperature at pokemons were collected.
+
+Zonal statistics: Step 1
+========================================================
+Download and plot the mean annual temperature from the web using the getData function
+```{r get data, fig.height = 15, fig.width = 30}
+climate <- raster::getData('worldclim', var='bio', res=10)
+annual_temp<- climate$bio1
+plot(annual_temp, col = viridis::inferno(n=10))
+```
+
+Zonal statistics: Step 2
+========================================================
+Extract temperature at each point
+
+```{r mean temperature at each point}
+poke_annual_temp<- raster::extract(annual_temp, pkmng_points, na.rm=T, df=T)
+head(poke_annual_temp)
+```
+
+Zonal statistics: Step 3
+========================================================
+Uh-oh, the data has no identification of which point it belongs! 
+We need to merge it with the point identifiers.
+
+```{r label points}
+poke_annual_temp_final<- cbind(pkmng_points@data$pokemonId,poke_annual_temp$bio1)
+colnames(poke_annual_temp_final)<- c("pokemonId","Annual_Temp")
+head(poke_annual_temp_final)
+```
+Zonal statistics: Results
+========================================================
+Ta-da! 
+
+```{r boxplot}
+boxplot(poke_annual_temp_final[,2], main = "Pokemon Collection Temperature")
+```
+
+Challenge 3: Zonal Statistics
+========================================================
+type: prompt
+
+Now you try it! What is the mean annual precipitation at which pokemons were collected? 
+
+***Hint:*** Mean annual precipitation is bio12 in the climate dataset.
+
+```{r Challenge 3 ZS, echo = F, fig.height = 7}
+annual_precip<- climate$bio12
+plot(annual_precip, col = viridis::viridis(n=10))
+points(pkmng_points, col = "red", pch = 20)
+```
+
+Solution 3: Zonal Statistics
+========================================================
+type: prompt
+
+
+```{r Solution 3 ZS}
+annual_precip<- climate$bio12
+poke_annual_precip<- raster::extract(annual_precip, pkmng_points, na.rm=T, df=T)
+poke_annual_precip_final<- cbind(pkmng_points@data$pokemonId,poke_annual_precip$bio12)
+colnames(poke_annual_precip_final)<- c("pokemonId","Annual_Precip")
+paste0("The mean annual precipitation at pokemon collections: ", 
+       round(mean(poke_annual_precip_final[,2], na.rm = T)), digits = 2)
+```
+
+TAKE HOME MESSAGES
+========================================================
+
+- Be mindful of projections!
+- Visualize spatial patterns!
+- No one tool does everything!
+
+***
+
+![Pokeball](SpatialAnalysisImages/pikachu.png)
