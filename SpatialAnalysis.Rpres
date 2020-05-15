@@ -7,8 +7,8 @@
 }
 
 .section .reveal .state-background{
-background-color: #00cc99;
-background-size: cover;
+  background-color: #00cc99;
+  background-size: cover;
 }
 
 </style>
@@ -454,9 +454,11 @@ Geoprocessing: Buffer points
 
 **Example:** buffer some pokemon points to 100km radius
 
-We'll first subset the data
+Geoprocessing: Buffer points
+========================================================
+First, subset data
 
-```{r subset pokemon}
+```{r subset pokemon, fig.height = 15, fig.width = 30}
 sub_pkmng_p<- subset(pkmng_points, pokemonId %in% c(8:10))
 plot(pkmng_countries)
 plot(sub_pkmng_p,add = T, col = "red")
@@ -464,7 +466,8 @@ plot(sub_pkmng_p,add = T, col = "red")
 
 Geoprocessing: Buffer points
 ========================================================
-Now we buffer with 100km radius
+Then buffer with a 100km radius
+
 ```{r buffer pokemon, fig.height = 15, fig.width = 30}
 buffer_pkmng_points<- raster::buffer(sub_pkmng_p,width = 100000)
 plot(pkmng_countries)
@@ -481,7 +484,7 @@ Geoprocessing: Clip
 Geoprocessing: Clip
 ========================================================
 First, filter Italy out of the countries shapefile
-```{r pull out Italy, fig.height = 15, fig.width = 30}
+```{r pull out Italy, fig.height = 10, fig.width = 30}
 Italy <- pkmng_countries %>% filter(NAME == "Italy")
 plot(Italy)
 plot(buffer_pkmng_points, add = T, col = "red")
@@ -490,7 +493,7 @@ plot(buffer_pkmng_points, add = T, col = "red")
 Geoprocessing: Clip
 ========================================================
 Now clip buffered points based on Italian shapefile we created
-```{r clip to Italy}
+```{r clip to Italy, fig.height = 10, fig.width = 30}
 clip_pkmng_rgeos<- rgeos::gIntersection(Italy, buffer_pkmng_points, 
                                         byid = TRUE, drop_lower_td = TRUE)
 plot(Italy)
@@ -517,7 +520,7 @@ head(intersect_pkmg@data)[,c(1:3,212:214)]
 Geoprocessing: Merge
 ========================================================
 - Combines datasets that are the same data type
-```{r merge, fig.height = 15, fig.width = 30}
+```{r merge, fig.height = 10, fig.width = 30}
 #subset the countries
 sub_count<- pkmng_countries %>% filter(NAME==c("France","Italy"))
 sub_count_sf<- sf::st_as_sf(sub_count)
@@ -528,7 +531,7 @@ plot(merge_count)
 Geoprocessing: Dissolve
 ========================================================
 - Unifies boundaries based on common attribute values
-```{r dissolve}
+```{r dissolve, fig.height = 10, fig.width = 30}
 diss_sub_count<- rgeos::gUnaryUnion(sub_count)
 plot(diss_sub_count)
 ```
@@ -571,8 +574,9 @@ Zonal statistics: Results
 ========================================================
 Ta-da! 
 
-```{r boxplot}
-boxplot(poke_annual_temp_final[,2], main = "Pokemon Collection Temperature")
+```{r boxplot, fig.height = 7, fig.width = 10, fig.align = "center"}
+boxplot(poke_annual_temp_final[,2], 
+        main = "Pokemon Collection Temperature", col = "#00cc99")
 ```
 
 Challenge 3: Zonal Statistics
@@ -599,7 +603,7 @@ annual_precip<- climate$bio12
 poke_annual_precip<- raster::extract(annual_precip, pkmng_points, na.rm=T, df=T)
 poke_annual_precip_final<- cbind(pkmng_points@data$pokemonId,poke_annual_precip$bio12)
 colnames(poke_annual_precip_final)<- c("pokemonId","Annual_Precip")
-paste0("The mean annual precipitation at pokemon collections: ", 
+paste0("Mean annual precipitation at pokemon collections: ", 
        round(mean(poke_annual_precip_final[,2], na.rm = T)), digits = 2)
 ```
 
@@ -612,4 +616,4 @@ TAKE HOME MESSAGES
 
 ***
 
-![Pokeball](SpatialAnalysisImages/pikachu.png)
+![Pikachu](SpatialAnalysisImages/pikachu.png)

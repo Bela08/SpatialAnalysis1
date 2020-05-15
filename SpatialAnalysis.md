@@ -7,8 +7,8 @@
 }
 
 .section .reveal .state-background{
-background-color: #00cc99;
-background-size: cover;
+  background-color: #00cc99;
+  background-size: cover;
 }
 
 </style>
@@ -15291,7 +15291,9 @@ Geoprocessing: Buffer points
 
 **Example:** buffer some pokemon points to 100km radius
 
-We'll first subset the data
+Geoprocessing: Buffer points
+========================================================
+First, subset data
 
 
 ```r
@@ -15304,7 +15306,8 @@ plot(sub_pkmng_p,add = T, col = "red")
 
 Geoprocessing: Buffer points
 ========================================================
-Now we buffer with 100km radius
+Then buffer with a 100km radius
+
 
 ```r
 buffer_pkmng_points<- raster::buffer(sub_pkmng_p,width = 100000)
@@ -15478,10 +15481,11 @@ Ta-da!
 
 
 ```r
-boxplot(poke_annual_temp_final[,2], main = "Pokemon Collection Temperature")
+boxplot(poke_annual_temp_final[,2], 
+        main = "Pokemon Collection Temperature", col = "#00cc99")
 ```
 
-![plot of chunk boxplot](SpatialAnalysis-figure/boxplot-1.png)
+<img src="SpatialAnalysis-figure/boxplot-1.png" title="plot of chunk boxplot" alt="plot of chunk boxplot" style="display: block; margin: auto;" />
 
 Challenge 3: Zonal Statistics
 ========================================================
@@ -15504,12 +15508,12 @@ annual_precip<- climate$bio12
 poke_annual_precip<- raster::extract(annual_precip, pkmng_points, na.rm=T, df=T)
 poke_annual_precip_final<- cbind(pkmng_points@data$pokemonId,poke_annual_precip$bio12)
 colnames(poke_annual_precip_final)<- c("pokemonId","Annual_Precip")
-paste0("The mean annual precipitation at pokemon collections: ", 
+paste0("Mean annual precipitation at pokemon collections: ", 
        round(mean(poke_annual_precip_final[,2], na.rm = T)), digits = 2)
 ```
 
 ```
-[1] "The mean annual precipitation at pokemon collections: 9372"
+[1] "Mean annual precipitation at pokemon collections: 9372"
 ```
 
 TAKE HOME MESSAGES
@@ -15521,4 +15525,4 @@ TAKE HOME MESSAGES
 
 ***
 
-![Pokeball](SpatialAnalysisImages/pikachu.png)
+![Pikachu](SpatialAnalysisImages/pikachu.png)
