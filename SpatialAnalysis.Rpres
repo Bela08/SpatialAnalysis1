@@ -128,6 +128,8 @@ type: section
 Reading Vectors
 ========================================================
 The `rgdal` library contains a lot of really useful GIS tools. Make friends with it.
+
+**Note:** Mac users will need the slash after "Data", PC users will need to leave it off.
 ```{r rgdal, message = F}
 library(rgdal)
 pkmng_countries <- readOGR(dsn = "Data/",

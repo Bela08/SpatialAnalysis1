@@ -1,3 +1,6 @@
+---
+output: word_document
+---
 <style>
 .reveal h1, .reveal h2, .reveal h3 {
   word-wrap: normal;
@@ -115,6 +118,8 @@ type: section
 Reading Vectors
 ========================================================
 The `rgdal` library contains a lot of really useful GIS tools. Make friends with it.
+
+**Note:** Mac users will need the slash after "Data", PC users will need to leave it off.
 
 ```r
 library(rgdal)
